@@ -64,6 +64,26 @@ std::ostream& operator<<(std::ostream& os, const std::tuple< ArgsT... >& t) {
 }
 //------------------------------------------------------------------------------
 
+///XXX @todo FIX - JUST TO ENABLE CODE TO COMPILE
+namespace std {
+  template <typename...ArgsT>
+  struct hash< std::tuple< ArgsT... > > {
+    typedef std::tuple< ArgsT... > argument_type;
+      typedef std::size_t result_type;
+      result_type operator()(argument_type const& s) const {
+          return size_t(&s);
+      }
+  };
+  template <typename T, typename A>
+  struct hash< std::vector< T, A > > {
+    typedef std::vector< T, A > argument_type;
+      typedef std::size_t result_type;
+      result_type operator()(argument_type const& s) const {
+          return size_t(&s);
+      }
+  };
+}
+
 
 //------------------------------------------------------------------------------
 /// @brief Minimal implementation of a class that can hold instances of any
@@ -132,6 +152,10 @@ public:
     size_t Size() const {
       return pval_->Sizeof();
     }
+    /// Hash
+    size_t Hash() const {
+      return pval_->Hash();
+    }
 public:
     ///Check, cast and return const reference.
     template < typename T > const T& Get() const {
@@ -182,6 +206,7 @@ private:
         virtual bool NotEqualTo(const HandlerBase* other) const = 0;
         virtual bool GreaterThan(const HandlerBase* other) const = 0;
         virtual size_t Sizeof() const = 0;
+        virtual size_t Hash() const = 0;
     };
 
     /// HandlerBase actual data container class.
@@ -221,6 +246,10 @@ private:
         size_t Sizeof() const {
           return sizeof(val_);
         }
+        size_t Hash() const {
+          static std::hash< Type > h;
+          return h(val_);
+        }
     };
 
     ///Pointer to contained data: deleted when Any instance deleted.
@@ -233,6 +262,18 @@ private:
     }
 
 };
+
+namespace std {
+  template <>
+  struct hash< Any > {
+    typedef Any argument_type;
+      typedef std::size_t result_type;
+      result_type operator()(argument_type const& s) const {
+          return s.Hash();
+      }
+  };
+}
+
 
 //------------------------------------------------------------------------------
 ///Utility function to print the content of an std::vector of Any objects.

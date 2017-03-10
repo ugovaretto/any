@@ -5,6 +5,7 @@
 #include <tuple>
 #include <cassert>
 #include <map>
+#include <unordered_map>
 #define ANY_CHARPTR_TO_STRING
 #include "../include/Any.h"
 
@@ -68,5 +69,9 @@ int main( int, char** )
     si2[1.0] = "ONE POINT ZERO";
     assert(si2[1.0] == "ONE POINT ZERO");
     cout << "PASSED" << endl;
+
+    unordered_map< Any, Any > um = {{"one", 1}, {"TWO", "two"}};
+    assert(um["TWO"] == "two");
+
     return 0;
 }
