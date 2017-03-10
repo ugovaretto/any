@@ -35,6 +35,9 @@
 #include <algorithm>
 #include <iostream>
 #include <tuple>
+#ifdef ANY_CHARPTR_TO_STRING
+#include <string>
+#endif
 
 //------------------------------------------------------------------------------
 ///Utility function to serialize the content of a tuple
@@ -72,6 +75,9 @@ public:
     struct EMPTY_ {};
     /// Default constructor, sets the internal pointer to @c NULL
     Any() : pval_( 0 ) {}
+#ifdef ANY_CHARPTR_TO_STRING
+    Any(const char* s) : Any(std::string(s)) {}
+#endif
     /// Constructor accepting a parameter copied into internal type instance.
     template < class ValT >
     Any( const ValT& v ) : pval_( new ValHandler< ValT >( v ) ) {}
@@ -94,6 +100,11 @@ public:
     /// Assignment from non - @c Any value.
     template < class ValT >
     Any& operator=( const ValT& v ) { Any( v ).Swap( *this ); return *this; }
+#ifdef ANY_CHARPTR_TO_STRING
+    bool operator==(const char* other) const {
+      return operator==(std::string(other));
+    }
+#endif
     /// Equality: check by converting value to contained value type then
     /// invoking equality operator on converted type.
     template < class ValT >
@@ -165,12 +176,12 @@ private:
         virtual HandlerBase* Clone() const = 0;
         virtual ~HandlerBase() {}
         virtual std::ostream& Serialize(std::ostream& os) const = 0;
-        virtual char* Serialize(char* begin, const char* end) const = 0;
+        //virtual char* Serialize(char* begin, const char* end) const = 0;
         virtual bool LowerThan(const HandlerBase* other) const = 0;
         virtual bool EqualTo(const HandlerBase* other) const = 0;
         virtual bool NotEqualTo(const HandlerBase* other) const = 0;
         virtual bool GreaterThan(const HandlerBase* other) const = 0;
-        virtual bool Sizeof() const = 0;
+        virtual size_t Sizeof() const = 0;
     };
 
     /// HandlerBase actual data container class.

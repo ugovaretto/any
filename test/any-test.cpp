@@ -5,6 +5,7 @@
 #include <tuple>
 #include <cassert>
 #include <map>
+#define ANY_CHARPTR_TO_STRING
 #include "../include/Any.h"
 
 using namespace std;
@@ -14,31 +15,30 @@ struct Derived : Base {};
 
 int main( int, char** )
 {
-    Any any_int = 2;
-    Any any_int2 = 1.0f;
-    any_int2 = any_int;
-    std::cout << any_int2 << std::endl;
+    Any ai1 = 2;
+    Any ai2 = 1.0f;
+    ai1 = ai2;
+    assert(ai1 == 1.0f);
 
-    std::vector< Any > vany( 4 );
-    vany[ 0 ] = any_int;
-    vany[ 1 ] = any_int2;
+    vector< Any > vany( 4 );
+    vany[ 0 ] = ai1;
+    vany[ 1 ] = ai2;
     Any anyv = vany;
 
-    const std::vector< Any >& anyvcref = anyv;
-    std::vector< Any >& anyvref = anyv;
+    const vector< Any >& anyvcref = anyv;
+    vector< Any >& anyvref = anyv;
     try {
-        std::vector< double >& anyvref2 = anyv;
+        vector< double >& anyvref2 = anyv;
     } catch( const std::exception& e ) {
-        std::cout << e.what() << std::endl;
+        cerr << e.what() << std::endl;
     }
-    std::cout << anyvcref[ 0 ] << std::endl;
+    assert(anyvcref[ 0 ] == ai1);
     anyvref[ 0 ] = std::string( "ciao" );
-    std::cout << anyvref[ 0 ] << std::endl;
+    assert(anyvref[ 0 ] == "ciao");
 
-    Any anytuple = std::make_tuple( 1, 2.3 );
-    typedef const std::tuple< int, double >& TupleConstRef;
-    std::cout << std::get< 1 >(static_cast< TupleConstRef >( anytuple ))
-              << std::endl;
+    Any anytuple = make_tuple( 1, 2.3 );
+    typedef const tuple< int, double >& TupleConstRef;
+    assert(get< 1 >(static_cast< TupleConstRef >( anytuple )) == 2.3);
 
     Any i1 = 8;
     Any i2 = 9;
@@ -56,7 +56,17 @@ int main( int, char** )
     Any pbaseany(pbase);
     pbase = static_cast< Base* >( static_cast< Derived* >( pbaseany ) );
 
-    map< Any, Any > si = {{"one", 1}, {"two", 2}};
+    map< Any, Any > si = map< Any, Any >{{string("one"), 1},
+                                         {string("two"), 2}};
+    assert(si[string("one")] == 1);
 
+    map< Any, Any > si2 = map< Any, Any >{{"one", 1},
+                                         {"two", 2}};
+    assert(si2[string("one")] == 1);
+    assert(si2["one"] == 1);
+
+    si2[1.0] = "ONE POINT ZERO";
+    assert(si2[1.0] == "ONE POINT ZERO");
+    cout << "PASSED" << endl;
     return 0;
 }
