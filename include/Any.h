@@ -134,18 +134,22 @@ public:
     }
     /// Lower than
     bool operator <(const Any& other) const {
+      CheckAndThrow(other);
       return pval_->LowerThan(other.pval_);
     }
     /// Equal to
     bool operator ==(const Any& other) const {
+      CheckAndThrow(other);
       return pval_->EqualTo(other.pval_);
     }
     /// Not equal to
     bool operator !=(const Any& other) const {
+      CheckAndThrow(other);
       return pval_->NotEqualTo(other.pval_);
     }
     /// Greater than
     bool operator >(const Any& other) const {
+      CheckAndThrow(other);
       return pval_->GreaterThan(other.pval_);
     }
     /// Size
@@ -193,6 +197,16 @@ private:
                     + std::string( " to " )
                     + typeid( ValT ).name() ).c_str() );
 #endif
+    }
+    void CheckAndThrow(const Any& other) const {
+      #ifdef ANY_CHECK_TYPE
+              if(Type() != other_.Type())
+                  throw std::logic_error(
+                          (std::string( " Attempt to convert from ")
+                          + Type().name()
+                          + std::string( " to " )
+                          + other.Type().name() ).c_str() );
+      #endif
     }
     /// @interface HandlerBase Wrapper for data storage.
     struct HandlerBase {// hint: use small object allocator {
