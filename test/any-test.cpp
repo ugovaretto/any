@@ -4,8 +4,10 @@
 #include <vector>
 #include <tuple>
 #include <cassert>
+#include <map>
 #include "../include/Any.h"
 
+using namespace std;
 
 struct Base {};
 struct Derived : Base {};
@@ -51,7 +53,10 @@ int main( int, char** )
     Base* pbase;
     Derived  derived;
     pbase = &derived;
-    Any pbaseany(  pbase );
+    Any pbaseany(pbase);
     pbase = static_cast< Base* >( static_cast< Derived* >( pbaseany ) );
+
+    map< Any, Any > si = {{"one", 1}, {"two", 2}};
+
     return 0;
 }
