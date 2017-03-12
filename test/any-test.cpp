@@ -73,5 +73,12 @@ int main( int, char** )
     unordered_map< Any, Any > um = {{"one", 1}, {"TWO", "two"}};
     assert(um["TWO"] == "two");
 
+    // struct MyClass {
+    //   int v = 3;
+    // };
+    //
+    // AnyTraits::< MyClass >::LT::Type
+    // Any m = MyClass();
+
     return 0;
 }

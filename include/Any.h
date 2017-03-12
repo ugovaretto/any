@@ -1,7 +1,7 @@
 #pragma once
 ////////////////////////////////////////////////////////////////////////////////
-//Parsley - parsing framework
-//Copyright (c) 2010-2015, Ugo Varetto
+//Any
+//Copyright (c) 2017 Ugo Varetto
 //All rights reserved.
 //
 //Redistribution and use in source and binary forms, with or without
@@ -35,9 +35,12 @@
 #include <algorithm>
 #include <iostream>
 #include <tuple>
+#include "Operators.h"
+#include "AnyPolicies.h"
 #ifdef ANY_CHARPTR_TO_STRING
 #include <string>
 #endif
+
 
 //------------------------------------------------------------------------------
 ///Utility function to serialize the content of a tuple
@@ -100,7 +103,14 @@ public:
 #endif
     /// Constructor accepting a parameter copied into internal type instance.
     template < class ValT >
-    Any( const ValT& v ) : pval_( new ValHandler< ValT >( v ) ) {}
+    Any( const ValT& v ) : pval_(
+      new ValHandler< ValT,
+                      typename AnyPolicies< ValT >::Comparison,
+                      typename AnyPolicies< ValT >::Serializer,
+                      typename AnyPolicies< ValT >::Arithmetic,
+                      typename AnyPolicies< ValT >::Logical,
+                      typename AnyPolicies< ValT >::Call,
+                      typename AnyPolicies< ValT >::Bitwise >( v ) ) {}
     /// Copy constructor.
     Any( const Any& a ) : pval_( a.pval_ ? a.pval_->Clone() : 0 ) {}
     /// Destructor: deletes the contained data type.
@@ -224,38 +234,52 @@ private:
     };
 
     /// HandlerBase actual data container class.
-    template < class T > struct ValHandler :  HandlerBase {
+    template < typename T,
+               typename ComparisonOperators = NoComparisonOperators< T >,
+               typename Serializer = NoSerializer< T >,
+               typename ArithmeticOperators = NoArithmeticOperators< T >,
+               typename LogicalOperators = NoLogicalOperators< T >,
+               typename CallOperator = NoCallOperator< T >,
+               typename BitWiseOperators = NoBitwiseOperators< T > > struct ValHandler :
+      HandlerBase,
+      ComparisonOperators,
+      ArithmeticOperators,
+      LogicalOperators,
+      Serializer,
+      CallOperator {
         typedef T Type;
         T val_;
         ValHandler( const T& v ) : val_( v ) {}
         const std::type_info& GetType() const { return typeid( T ); }
         ValHandler* Clone() const { return new ValHandler( val_ ); }
         std::ostream& Serialize( std::ostream& os ) const {
-            os << val_;
-            return os;
+            // os << val_;
+            // return os;
+            return Serializer::Serialize(os, val_);
         }
         bool LowerThan(const HandlerBase* other) const {
           const ValHandler< Type >* v
             = static_cast< const ValHandler< Type >* >(other);
-          return val_ < v->val_;
+          return ComparisonOperators::Less(val_, v->val_);
+          // return val_ < v->val_;
         }
         bool EqualTo(const HandlerBase* other) const {
           const ValHandler< Type >*v
             = static_cast< const ValHandler< Type >* >(other);
-          return val_ == v->val_;
+          return ComparisonOperators::Equal(val_, v->val_);
         }
         bool NotEqualTo(const HandlerBase* other) const {
           const ValHandler< Type >*v
             = static_cast< const ValHandler< Type >* >(other);
-          return val_ != v->val_;
+          return ComparisonOperators::NotEqual(val_, v->val_);
         }
         bool GreaterThan(const HandlerBase* other) const {
           const ValHandler< Type >*v
             = static_cast< const ValHandler< Type >* >(other);
-          return val_ > v->val_;
+          return ComparisonOperators::Greater(val_, v->val_);
         }
         char* Serialize(char* begin, const char* end) {
-          return SerializeToCharBuffer(val_, begin, end);
+          return Serializer::Serialize(val_, begin, end);
         }
         size_t Sizeof() const {
           return sizeof(val_);
