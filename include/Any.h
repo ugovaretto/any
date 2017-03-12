@@ -110,7 +110,8 @@ public:
                       typename AnyPolicies< ValT >::Arithmetic,
                       typename AnyPolicies< ValT >::Logical,
                       typename AnyPolicies< ValT >::Call,
-                      typename AnyPolicies< ValT >::Bitwise >( v ) ) {}
+                      typename AnyPolicies< ValT >::Bitwise,
+                      typename AnyPolicies< ValT >::HashFun >( v ) ) {}
     /// Copy constructor.
     Any( const Any& a ) : pval_( a.pval_ ? a.pval_->Clone() : 0 ) {}
     /// Destructor: deletes the contained data type.
