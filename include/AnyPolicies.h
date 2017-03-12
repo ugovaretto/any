@@ -47,16 +47,28 @@ struct AnyPolicies {
   using Logical = NoLogicalOperators< T >;
   using Call = NoCallOperator< T >;
   using Bitwise = NoBitwiseOperators< T >;
+  using HashFun =
+    typename std::conditional<
+      std::is_arithmetic< T >::value,
+      DefaultHash< T >,
+      NoHash< T > >::type;
 };
 
-template <>
-struct AnyPolicies< std::string > {
-  using Comparison = DefaultComparisonOperators< std::string >;
-  using Serializer = NoSerializer< std::string >;
-  using Arithmetic = NoArithmeticOperators< std::string >;
-  using Logical = NoLogicalOperators< std::string >;
-  using Call = NoCallOperator< std::string >;
-  using Bitwise = NoBitwiseOperators< std::string >;
+template<
+    class CharT,
+    class Traits,
+    class Allocator
+>
+struct AnyPolicies< std::basic_string< CharT, Traits, Allocator > > {
+  using Type = std::basic_string< CharT, Traits, Allocator >;
+  using Comparison = DefaultComparisonOperators< Type >;
+  using Serializer = NoSerializer< Type >;
+  using Arithmetic = NoArithmeticOperators< Type >;
+  using Logical = NoLogicalOperators< Type >;
+  using Call = NoCallOperator< Type >;
+  using Bitwise = NoBitwiseOperators< Type >;
+  using HashFun = DefaultHash< Type >;
+
 };
 
 template < typename T, typename A >
@@ -68,5 +80,6 @@ struct AnyPolicies< std::vector< T, A > > {
   using Logical = NoLogicalOperators< Type >;
   using Call = NoCallOperator< Type >;
   using Bitwise = NoBitwiseOperators< Type >;
+  using HashFun = NoHash< Type >;
 };
 #endif

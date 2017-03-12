@@ -14,8 +14,7 @@ using namespace std;
 struct Base {};
 struct Derived : Base {};
 
-int main( int, char** )
-{
+int main( int, char** ) {
     Any ai1 = 2;
     Any ai2 = 1.0f;
     ai1 = ai2;
@@ -68,17 +67,17 @@ int main( int, char** )
 
     si2[1.0] = "ONE POINT ZERO";
     assert(si2[1.0] == "ONE POINT ZERO");
+
+    unordered_map< Any, Any > um = {{string("one"), 1}, {string("TWO"), "two"}};
+    assert(um[string("TWO")] == "two");
+
+    struct MyClass {
+      int v = 3;
+    };
+    Any m = MyClass();
+
     cout << "PASSED" << endl;
 
-    unordered_map< Any, Any > um = {{"one", 1}, {"TWO", "two"}};
-    assert(um["TWO"] == "two");
-
-    // struct MyClass {
-    //   int v = 3;
-    // };
-    //
-    // AnyTraits::< MyClass >::LT::Type
-    // Any m = MyClass();
 
     return 0;
 }

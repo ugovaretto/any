@@ -240,13 +240,15 @@ private:
                typename ArithmeticOperators = NoArithmeticOperators< T >,
                typename LogicalOperators = NoLogicalOperators< T >,
                typename CallOperator = NoCallOperator< T >,
-               typename BitWiseOperators = NoBitwiseOperators< T > > struct ValHandler :
+               typename BitWiseOperators = NoBitwiseOperators< T >,
+               typename HashFun = NoHash< T > > struct ValHandler :
       HandlerBase,
       ComparisonOperators,
       ArithmeticOperators,
       LogicalOperators,
       Serializer,
-      CallOperator {
+      CallOperator,
+      HashFun {
         typedef T Type;
         T val_;
         ValHandler( const T& v ) : val_( v ) {}
@@ -285,8 +287,7 @@ private:
           return sizeof(val_);
         }
         size_t Hash() const {
-          static std::hash< Type > h;
-          return h(val_);
+          return HashFun::Hash(val_);
         }
     };
 

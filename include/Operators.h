@@ -115,3 +115,21 @@ struct DefaultSerializer {
     return begin + sizeof(v);
   }
 };
+
+template < typename T >
+struct NoHash {
+  using HashFun = std::false_type;
+  static size_t Hash(const T&) {
+    throw std::logic_error("Hash function not implemented");
+    return 0;
+  }
+};
+
+template < typename T >
+struct DefaultHash {
+  using HashFun = std::true_type;
+  static size_t Hash(const T& v) {
+    static std::hash< T > h;
+    return h(v);
+  }
+};
