@@ -89,7 +89,7 @@ public:
                       typename AnyPolicies< ValT >::Logical,
                       typename AnyPolicies< ValT >::Call,
                       typename AnyPolicies< ValT >::Bitwise,
-                      typename AnyPolicies< ValT >::HashFun >( v ) ) {}
+                      typename AnyPolicies< ValT >::HashFun >( v )) {}
     /// Copy constructor.
     Any(const Any& a) : pval_(a.pval_ ? a.pval_->Clone() : nullptr) {}
     /// Destructor: deletes the contained data type.
@@ -200,7 +200,7 @@ private:
         virtual size_t Hash() const = 0;
     };
 
-    /// HandlerBase - actual data container class.
+    /// HandlerBase implementation - actual data container class.
     template < typename T >
     using AP = AnyPolicies< T >;
     template < typename T,
@@ -225,15 +225,12 @@ private:
         const std::type_info& GetType() const { return typeid( T ); }
         ValHandler* Clone() const { return new ValHandler( val_ ); }
         std::ostream& Serialize( std::ostream& os ) const {
-            // os << val_;
-            // return os;
             return Serializer::Serialize(os, val_);
         }
         bool LowerThan(const HandlerBase* other) const {
           const ValHandler< Type >* v
             = static_cast< const ValHandler< Type >* >(other);
           return ComparisonOperators::Less(val_, v->val_);
-          // return val_ < v->val_;
         }
         bool EqualTo(const HandlerBase* other) const {
           const ValHandler< Type >*v

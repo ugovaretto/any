@@ -98,7 +98,7 @@ struct NoArithmeticOperators {
         return T();
     }
 
-    static T Remainder(const T&, const T&) {
+    static T Modulo(const T&, const T&) {
         throw std::logic_error("'%' not implemented");
         return T();
     }
@@ -227,7 +227,7 @@ struct DefaultArithmeticOperators {
         static constexpr bool value = sizeof(test(std::declval<U>())) == sizeof(long);
     };
 
-    static T Remainder(const T& v1, const T& v2) {
+    static T Modulo(const T& v1, const T& v2) {
         if(!HasRemainder< T >::value) throw std::logic_error("'%' not implemented");
         return v1 % v2;
     }
