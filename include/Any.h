@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <iostream>
 #include <tuple>
+#include <cstdlib> //malloc
 #include "Operators.h"
 #include "AnyPolicies.h"
 #ifdef ANY_CHARPTR_TO_STRING
@@ -66,6 +67,18 @@ std::ostream& operator<<(std::ostream& os, const std::tuple< ArgsT... >& t) {
   return PrintTuple< size_t(0), sizeof...(ArgsT) >::Do(os, t);
 }
 
+struct NewDeleteAllocator {
+    template < size_t size >
+    static void* Allocate() { return malloc(size); }
+    ///XXX add posix_memalign __aligned_malloc support
+    template < typename T >
+    static T* AllocateType() {
+        return reinterpret_cast< T* >(Allocate< sizeof(T) >());
+    }
+    static void DeAllocate(void* p) { free(p); }
+};
+
+
 //------------------------------------------------------------------------------
 /// @brief Minimal implementation of a class that can hold instances of any
 /// type.
@@ -79,21 +92,26 @@ public:
 #ifdef ANY_CHARPTR_TO_STRING
     Any(const char* s) : Any(std::string(s)) {}
 #endif
+    using DefaultAllocator = NewDeleteAllocator;
     /// Constructor accepting a parameter copied into internal type instance.
-    template < class ValT >
-    Any(const ValT& v) : pval_(
-      new ValHandler< ValT,
-                      typename AnyPolicies< ValT >::Comparison,
-                      typename AnyPolicies< ValT >::Serializer,
-                      typename AnyPolicies< ValT >::Arithmetic,
-                      typename AnyPolicies< ValT >::Logical,
-                      typename AnyPolicies< ValT >::Call,
-                      typename AnyPolicies< ValT >::Bitwise,
-                      typename AnyPolicies< ValT >::HashFun >( v )) {}
+    template < typename ValT, typename AllocatorT = DefaultAllocator >
+    Any(const ValT& v, AllocatorT a = AllocatorT()) : pval_(nullptr) {
+        using V = ValHandler< ValT,
+                              AllocatorT,
+                              typename AnyPolicies< ValT >::Comparison,
+                              typename AnyPolicies< ValT >::Serializer,
+                              typename AnyPolicies< ValT >::Arithmetic,
+                              typename AnyPolicies< ValT >::Logical,
+                              typename AnyPolicies< ValT >::Call,
+                              typename AnyPolicies< ValT >::Bitwise,
+                              typename AnyPolicies< ValT >::HashFun >;
+        pval_ = static_cast< HandlerBase* >(a.template AllocateType< V >());
+        new (pval_) V(v, a);
+    }
     /// Copy constructor.
     Any(const Any& a) : pval_(a.pval_ ? a.pval_->Clone() : nullptr) {}
     /// Destructor: deletes the contained data type.
-    ~Any() { delete pval_; }
+    ~Any() { if(pval_) pval_->Destroy(); }
 public:
     /// Returns @c true if instance empty.
     bool Empty() const { return pval_ == 0; }
@@ -117,8 +135,8 @@ public:
     /// Equality: check by converting value to contained value type then
     /// invoking equality operator on converted type.
     template < class ValT >
-    bool operator==( const ValT& v ) const {
-        return (typeid(v) == Type()) && static_cast< ValHandler<ValT>* >( pval_ )->val_  == v;
+    bool operator==(const ValT& v) const {
+        return (typeid(v) == Type()) && static_cast< ValHandler<ValT>* >( pval_ )->val_ == v;
     }
     /// Lower than
     bool operator <(const Any& other) const {
@@ -194,16 +212,19 @@ private:
         virtual char* Serialize(char* begin, const char* end) const = 0;
         virtual bool LowerThan(const HandlerBase* other) const = 0;
         virtual bool EqualTo(const HandlerBase* other) const = 0;
+        //virtual bool EqualTo(const void* other) const = 0;
         virtual bool NotEqualTo(const HandlerBase* other) const = 0;
         virtual bool GreaterThan(const HandlerBase* other) const = 0;
         virtual size_t Sizeof() const = 0;
         virtual size_t Hash() const = 0;
+        virtual void Destroy() = 0;
     };
 
     /// HandlerBase implementation - actual data container class.
     template < typename T >
     using AP = AnyPolicies< T >;
     template < typename T,
+               typename AllocatorT = NewDeleteAllocator,
                typename ComparisonOperators = typename AP< T >::Comparison,
                typename Serializer = typename AP< T >::Serializer,
                typename ArithmeticOperators = typename AP< T >::Arithmetic,
@@ -213,6 +234,7 @@ private:
                typename HashFun = typename AP< T >::HashFun >
     struct ValHandler :
       HandlerBase,
+      AllocatorT,
       ComparisonOperators,
       ArithmeticOperators,
       LogicalOperators,
@@ -221,9 +243,13 @@ private:
       HashFun {
         typedef T Type;
         T val_;
-        ValHandler( const T& v ) : val_( v ) {}
+        ValHandler( const T& v, AllocatorT a) : val_( v ), AllocatorT(a) {}
         const std::type_info& GetType() const { return typeid( T ); }
-        ValHandler* Clone() const { return new ValHandler( val_ ); }
+        ValHandler* Clone() const {
+            ValHandler* p = AllocatorT::template AllocateType< ValHandler >();
+            new (p) ValHandler(val_, static_cast< const AllocatorT& >(*this));
+            return p;
+        }
         std::ostream& Serialize( std::ostream& os ) const {
             return Serializer::Serialize(os, val_);
         }
@@ -255,6 +281,10 @@ private:
         }
         size_t Hash() const {
           return HashFun::Hash(val_);
+        }
+        void Destroy() {
+            val_.~T();
+            AllocatorT::DeAllocate(this); //DeAllocate will also clear any state in base allocator
         }
     };
 
