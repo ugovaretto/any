@@ -65,28 +65,6 @@ template < typename...ArgsT >
 std::ostream& operator<<(std::ostream& os, const std::tuple< ArgsT... >& t) {
   return PrintTuple< size_t(0), sizeof...(ArgsT) >::Do(os, t);
 }
-//------------------------------------------------------------------------------
-
-///XXX @todo FIX - JUST TO ENABLE CODE TO COMPILE
-namespace std {
-  template <typename...ArgsT>
-  struct hash< std::tuple< ArgsT... > > {
-    typedef std::tuple< ArgsT... > argument_type;
-      typedef std::size_t result_type;
-      result_type operator()(argument_type const& s) const {
-          return size_t(&s);
-      }
-  };
-  template <typename T, typename A>
-  struct hash< std::vector< T, A > > {
-    typedef std::vector< T, A > argument_type;
-      typedef std::size_t result_type;
-      result_type operator()(argument_type const& s) const {
-          return size_t(&s);
-      }
-  };
-}
-
 
 //------------------------------------------------------------------------------
 /// @brief Minimal implementation of a class that can hold instances of any
@@ -103,7 +81,7 @@ public:
 #endif
     /// Constructor accepting a parameter copied into internal type instance.
     template < class ValT >
-    Any( const ValT& v ) : pval_(
+    Any(const ValT& v) : pval_(
       new ValHandler< ValT,
                       typename AnyPolicies< ValT >::Comparison,
                       typename AnyPolicies< ValT >::Serializer,
@@ -113,7 +91,7 @@ public:
                       typename AnyPolicies< ValT >::Bitwise,
                       typename AnyPolicies< ValT >::HashFun >( v ) ) {}
     /// Copy constructor.
-    Any( const Any& a ) : pval_( a.pval_ ? a.pval_->Clone() : 0 ) {}
+    Any(const Any& a) : pval_(a.pval_ ? a.pval_->Clone() : nullptr) {}
     /// Destructor: deletes the contained data type.
     ~Any() { delete pval_; }
 public:
@@ -127,10 +105,10 @@ public:
     /// Swap two Any instances by swapping the internal pointers.
     Any& Swap( Any& a ) { std::swap( pval_, a.pval_ ); return *this; }
     /// Assignment
-    Any& operator=( const Any& a ) { Any( a ).Swap( *this ); return *this; }
+    Any& operator=(const Any& a) { Any( a ).Swap(*this); return *this; }
     /// Assignment from non - @c Any value.
     template < class ValT >
-    Any& operator=( const ValT& v ) { Any( v ).Swap( *this ); return *this; }
+    Any& operator=( const ValT& v ) { Any( v ).Swap(*this); return *this; }
 #ifdef ANY_CHARPTR_TO_STRING
     bool operator==(const char* other) const {
       return operator==(std::string(other));
@@ -140,8 +118,7 @@ public:
     /// invoking equality operator on converted type.
     template < class ValT >
     bool operator==( const ValT& v ) const {
-        CheckAndThrow< ValT >();
-        return (static_cast< ValHandler<ValT>* >( pval_ )->val_ ) == v;
+        return (typeid(v) == Type()) && static_cast< ValHandler<ValT>* >( pval_ )->val_  == v;
     }
     /// Lower than
     bool operator <(const Any& other) const {
@@ -150,8 +127,7 @@ public:
     }
     /// Equal to
     bool operator ==(const Any& other) const {
-      CheckAndThrow(other);
-      return pval_->EqualTo(other.pval_);
+      return Type() == other.Type() && pval_->EqualTo(other.pval_);
     }
     /// Not equal to
     bool operator !=(const Any& other) const {
@@ -187,36 +163,26 @@ public:
         CheckAndThrow< ValT >();
         return ( static_cast< ValHandler<ValT>* >( pval_ )->val_ );
     }
-    ///Convert to pointer.
-    template < class ValT > operator ValT*() const {
-        CheckAndThrow< ValT >();
-        return &( static_cast< ValHandler<ValT>* >( pval_ )->val_ );
-    }
-    ///Convert to const pointer.
-    template < class ValT > operator const ValT*() const {
-        CheckAndThrow< ValT >();
-        return &( static_cast< ValHandler<ValT>* >( pval_ )->val_ );
-    }
 private:
     /// Check if contained data is convertible to specific type.
     template < class ValT > void CheckAndThrow() const {
 #ifdef ANY_CHECK_TYPE
-        if(typeid( ValT ) != Type())
+        if(typeid(ValT) != Type())
             throw std::logic_error(
                     (std::string( " Attempt to convert from ")
                     + Type().name()
                     + std::string( " to " )
-                    + typeid( ValT ).name() ).c_str() );
+                    + typeid(ValT).name() ).c_str());
 #endif
     }
     void CheckAndThrow(const Any& other) const {
       #ifdef ANY_CHECK_TYPE
-              if(Type() != other_.Type())
+              if(Type() != other.Type())
                   throw std::logic_error(
                           (std::string( " Attempt to convert from ")
                           + Type().name()
                           + std::string( " to " )
-                          + other.Type().name() ).c_str() );
+                          + other.Type().name()).c_str());
       #endif
     }
     /// @interface HandlerBase Wrapper for data storage.
@@ -225,7 +191,7 @@ private:
         virtual HandlerBase* Clone() const = 0;
         virtual ~HandlerBase() {}
         virtual std::ostream& Serialize(std::ostream& os) const = 0;
-        //virtual char* Serialize(char* begin, const char* end) const = 0;
+        virtual char* Serialize(char* begin, const char* end) const = 0;
         virtual bool LowerThan(const HandlerBase* other) const = 0;
         virtual bool EqualTo(const HandlerBase* other) const = 0;
         virtual bool NotEqualTo(const HandlerBase* other) const = 0;
@@ -234,15 +200,18 @@ private:
         virtual size_t Hash() const = 0;
     };
 
-    /// HandlerBase actual data container class.
+    /// HandlerBase - actual data container class.
+    template < typename T >
+    using AP = AnyPolicies< T >;
     template < typename T,
-               typename ComparisonOperators = NoComparisonOperators< T >,
-               typename Serializer = NoSerializer< T >,
-               typename ArithmeticOperators = NoArithmeticOperators< T >,
-               typename LogicalOperators = NoLogicalOperators< T >,
-               typename CallOperator = NoCallOperator< T >,
-               typename BitWiseOperators = NoBitwiseOperators< T >,
-               typename HashFun = NoHash< T > > struct ValHandler :
+               typename ComparisonOperators = typename AP< T >::Comparison,
+               typename Serializer = typename AP< T >::Serializer,
+               typename ArithmeticOperators = typename AP< T >::Arithmetic,
+               typename LogicalOperators = typename AP< T >::Logical,
+               typename CallOperator = typename AP< T >::Call,
+               typename BitWiseOperators = typename AP< T >::Bitwise,
+               typename HashFun = typename AP< T >::HashFun >
+    struct ValHandler :
       HandlerBase,
       ComparisonOperators,
       ArithmeticOperators,
@@ -281,7 +250,7 @@ private:
             = static_cast< const ValHandler< Type >* >(other);
           return ComparisonOperators::Greater(val_, v->val_);
         }
-        char* Serialize(char* begin, const char* end) {
+        char* Serialize(char* begin, const char* end) const {
           return Serializer::Serialize(val_, begin, end);
         }
         size_t Sizeof() const {

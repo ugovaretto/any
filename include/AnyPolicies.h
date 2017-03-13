@@ -1,3 +1,4 @@
+#pragma once
 ////////////////////////////////////////////////////////////////////////////////
 //Any
 //Copyright (c) 2017 Ugo Varetto
@@ -30,7 +31,6 @@
 #include <vector>
 #include "Operators.h"
 
-#ifndef ANY_POLICIES_CUSTOM
 template < typename T >
 struct AnyPolicies {
   using Comparison =
@@ -82,4 +82,3 @@ struct AnyPolicies< std::vector< T, A > > {
   using Bitwise = NoBitwiseOperators< Type >;
   using HashFun = NoHash< Type >;
 };
-#endif

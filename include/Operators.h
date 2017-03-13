@@ -31,105 +31,215 @@
 #include <type_traits>
 #include <iostream>
 
-template < typename T >
+
+//no implementation
+
+template<typename T>
 struct NoComparisonOperators {
-  using ComparisonOperators = std::false_type;
-  static bool Less(const T&, const T&) {
-    throw std::logic_error("'<' not implemented");
-    return false;
-  }
-  static bool Equal(const T&, const T&) {
-    throw std::logic_error("'==' not implemented");
-    return false;
-  }
-  static bool NotEqual(const T&, const T&) {
-    throw std::logic_error("'!=' not implemented");
-    return false;
-  }
-  static bool Greater(const T&, const T&) {
-    throw std::logic_error("'>' not implemented");
-    return false;
-  }
+    using ComparisonOperators = std::false_type;
+
+    static bool Less(const T&, const T&) {
+        throw std::logic_error("'<' not implemented");
+        return false;
+    }
+
+    static bool Equal(const T&, const T&) {
+        throw std::logic_error("'==' not implemented");
+        return false;
+    }
+
+    static bool NotEqual(const T&, const T&) {
+        throw std::logic_error("'!=' not implemented");
+        return false;
+    }
+
+    static bool Greater(const T&, const T&) {
+        throw std::logic_error("'>' not implemented");
+        return false;
+    }
 };
 
-template < typename T >
+template<typename T>
 struct NoSerializer {
-  using Serializer = std::false_type;
-  static std::ostream& Serialize(std::ostream& os, const T&) {
-    throw std::logic_error("'ostream <<' not implemented");
-    return os;
-  }
-  static char* Serialize(char* begin, const char*) {
-    throw std::logic_error("'char* serialization' not implemented");
-    return begin;
-  }
+    using Serializer = std::false_type;
+
+    static std::ostream& Serialize(std::ostream& os, const T&) {
+        throw std::logic_error("'ostream <<' not implemented");
+        return os;
+    }
+
+    static char* Serialize(const T&, char* begin, const char*) {
+        throw std::logic_error("'char* serialization' not implemented");
+        return begin;
+    }
 };
 
-template< typename T >
+template<typename T>
 struct NoArithmeticOperators {
-  using ArithmeticOperators = std::false_type;
+    using ArithmeticOperators = std::false_type;
+
+    static T Plus(const T&, const T&) {
+        throw std::logic_error("'+' not implemented");
+        return T();
+    }
+
+    static T Minus(const T&, const T&) {
+        throw std::logic_error("'-' not implemented");
+        return T();
+    }
+
+    static T Times(const T&, const T&) {
+        throw std::logic_error("'*' not implemented");
+        return T();
+    }
+
+    static T Div(const T&, const T&) {
+        throw std::logic_error("'/' not implemented");
+        return T();
+    }
+
+    static T Remainder(const T&, const T&) {
+        throw std::logic_error("'%' not implemented");
+        return T();
+    }
 };
 
-template< typename T >
+template<typename T>
 struct NoLogicalOperators {
-  using LogicalOperators = std::false_type;
+    using LogicalOperators = std::false_type;
+
+    static bool Not(const T&) {
+        throw std::logic_error("'!' not implemented");
+        return false;
+    }
+
+    static bool And(const T&, const T&) {
+        throw std::logic_error("'&&' not implemented");
+        return false;
+    }
+
+    static bool Or(const T&, const T&) {
+        throw std::logic_error("'||' not implemented");
+        return false;
+    }
 };
 
-template< typename T >
+template<typename T>
 struct NoCallOperator {
-  using CallOperator = std::false_type;
+    using CallOperator = std::false_type;
 };
 
-template< typename T >
+template<typename T>
 struct NoBitwiseOperators {
-  using BitwiseOperators = std::false_type;
+    using BitwiseOperators = std::false_type;
+
+    static bool And(const T&, const T&) {
+        throw std::logic_error("'&' not implemented");
+        return false;
+    }
+
+    static bool Or(const T&, const T&) {
+        throw std::logic_error("'|' not implemented");
+        return false;
+    }
+
+    static bool Xor(const T&, const T&) {
+        throw std::logic_error("'^' not implemented");
+        return false;
+    }
 };
 
-template < typename T >
-struct DefaultComparisonOperators {
-  using ComparisonOperators = std::true_type;
-  static bool Less(const T& v1, const T& v2) {
-    return v1 < v2;
-  }
-  static bool Equal(const T& v1, const T& v2) {
-    return v1 == v2;
-  }
-  static bool NotEqual(const T& v1, const T& v2) {
-    return v1 != v2;
-  }
-  static bool Greater(const T& v1, const T& v2) {
-    return v1 > v2;
-  }
-};
-
-template < typename T >
-struct DefaultSerializer {
-  using Serializer = std::true_type;
-  static std::ostream& Serialize(std::ostream& os, const T& v) {
-    os << v;
-    return os;
-  }
-  static char* Serialize(const T& v, char* begin, const char* end) {
-    if(begin + sizeof(v) >= end) return begin;
-    memmove(begin, &v, sizeof(v));
-    return begin + sizeof(v);
-  }
-};
-
-template < typename T >
+template<typename T>
 struct NoHash {
-  using HashFun = std::false_type;
-  static size_t Hash(const T&) {
-    throw std::logic_error("Hash function not implemented");
-    return 0;
-  }
+    using HashFun = std::false_type;
+
+    static size_t Hash(const T&) {
+        throw std::logic_error("Hash function not implemented");
+        return 0;
+    }
 };
 
-template < typename T >
+//default implementation
+
+template<typename T>
+struct DefaultComparisonOperators {
+    using ComparisonOperators = std::true_type;
+
+    static bool Less(const T& v1, const T& v2) {
+        return v1 < v2;
+    }
+
+    static bool Equal(const T& v1, const T& v2) {
+        return v1 == v2;
+    }
+
+    static bool NotEqual(const T& v1, const T& v2) {
+        return v1 != v2;
+    }
+
+    static bool Greater(const T& v1, const T& v2) {
+        return v1 > v2;
+    }
+};
+
+template<typename T>
+struct DefaultSerializer {
+    using Serializer = std::true_type;
+
+    static std::ostream& Serialize(std::ostream& os, const T& v) {
+        os << v;
+        return os;
+    }
+
+    static char* Serialize(const T& v, char* begin, const char* end) {
+        if(begin + sizeof(v) >= end) return begin;
+        memmove(begin, &v, sizeof(v));
+        return begin + sizeof(v);
+    }
+};
+
+template<typename T>
+struct DefaultArithmeticOperators {
+    using ArithmeticOperators = std::true_type;
+
+    static T Plus(const T& v1, const T& v2) {
+        return v1 + v2;
+    }
+
+    static T Minus(const T& v1, const T& v2) {
+        return v1 - v2;
+    }
+
+    static T Times(const T& v1, const T& v2) {
+        return v1 * v2;
+    }
+
+    static T Div(const T& v1, const T& v2) {
+        return v1 / v2;
+    }
+
+    template <typename U>
+    struct HasRemainder {
+        template <typename V, typename = decltype((std::declval<U>() % std::declval<U>()))>
+        static long test(const V&);
+        static char test(...);
+
+        static constexpr bool value = sizeof(test(std::declval<U>())) == sizeof(long);
+    };
+
+    static T Remainder(const T& v1, const T& v2) {
+        if(!HasRemainder< T >::value) throw std::logic_error("'%' not implemented");
+        return v1 % v2;
+    }
+};
+
+
+template<typename T>
 struct DefaultHash {
-  using HashFun = std::true_type;
-  static size_t Hash(const T& v) {
-    static std::hash< T > h;
-    return h(v);
-  }
+    using HashFun = std::true_type;
+
+    static size_t Hash(const T& v) {
+        static std::hash<T> h;
+        return h(v);
+    }
 };
