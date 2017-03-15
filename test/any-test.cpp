@@ -17,11 +17,9 @@
 
 using namespace std;
 
-struct Base {};
-struct Derived : Base {};
-
 int main( int, char** ) {
 
+    cout << ANY_HAS(float, Sum) << endl;
     Any ai1 = 2;
     Any ai2 = 1.0f;
     ai1 = ai2;
@@ -57,6 +55,8 @@ int main( int, char** ) {
     i1 = i2;
     assert(i1 == i2);
 
+    struct Base {};
+    struct Derived : Base {};
     Base* pbase;
     Derived  derived;
     pbase = &derived;

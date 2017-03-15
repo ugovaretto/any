@@ -30,6 +30,8 @@
 #include <stdexcept>
 #include <type_traits>
 #include <iostream>
+#include "utility.h"
+
 
 
 //no implementation
@@ -218,17 +220,9 @@ struct DefaultArithmeticOperators {
         return v1 / v2;
     }
 
-    template <typename U>
-    struct HasRemainder {
-        template <typename V, typename = decltype((std::declval<U>() % std::declval<U>()))>
-        static long test(const V&);
-        static char test(...);
-
-        static constexpr bool value = sizeof(test(std::declval<U>())) == sizeof(long);
-    };
 
     static T Modulo(const T& v1, const T& v2) {
-        if(!HasRemainder< T >::value) throw std::logic_error("'%' not implemented");
+        if(!ANY_HAS(T, Modulo)) throw std::logic_error("'%' not implemented");
         return v1 % v2;
     }
 };

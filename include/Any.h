@@ -34,8 +34,7 @@
 #include <iterator>
 #include <algorithm>
 #include <iostream>
-#include <tuple>
-#include <cstdlib> //malloc
+#include "utility.h"
 #include "Operators.h"
 #include "AnyPolicies.h"
 #ifdef ANY_CHARPTR_TO_STRING
@@ -43,41 +42,7 @@
 #endif
 
 
-//------------------------------------------------------------------------------
-///Utility function to serialize the content of a tuple
-namespace { template < size_t idx, size_t size >
-struct PrintTuple {
-  template < typename T >
-  static std::ostream& Do(std::ostream& os, const T& t) {
-    os << std::get< idx >(t);
-    if(idx < (size - 1)) os << ' ';
-    return PrintTuple< idx + 1, size >::Do(os, t);
-  }
-};
-template < size_t I >
-struct PrintTuple< I, I> {
-  template < typename T >
-  static std::ostream& Do(std::ostream& os, const T&) {
-    return os;
-  }
-};
-}
-template < typename...ArgsT >
-std::ostream& operator<<(std::ostream& os, const std::tuple< ArgsT... >& t) {
-  return PrintTuple< size_t(0), sizeof...(ArgsT) >::Do(os, t);
-}
-
-///XXX add posix_memalign __aligned_malloc support or
-///just wait for aligned_alloc from C++17
-struct MallocAllocator {
-    static void* Allocate(size_t n) { return malloc(n); }
-    static void Deallocate(void* p, size_t n) { free(p); }
-};
-
-
-//------------------------------------------------------------------------------
-/// @brief Minimal implementation of a class that can hold instances of any
-/// type.
+/// @brief Hold instances of any type.
 /// @ingroup utility
 class Any {
 public:
@@ -238,6 +203,7 @@ private:
       LogicalOperators,
       Serializer,
       CallOperator,
+      BitWiseOperators,
       HashFun {
         typedef T Type;
         T val_;
