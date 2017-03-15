@@ -67,15 +67,11 @@ std::ostream& operator<<(std::ostream& os, const std::tuple< ArgsT... >& t) {
   return PrintTuple< size_t(0), sizeof...(ArgsT) >::Do(os, t);
 }
 
-struct NewDeleteAllocator {
-    template < size_t size >
-    static void* Allocate() { return malloc(size); }
-    ///XXX add posix_memalign __aligned_malloc support
-    template < typename T >
-    static T* AllocateType() {
-        return reinterpret_cast< T* >(Allocate< sizeof(T) >());
-    }
-    static void DeAllocate(void* p) { free(p); }
+///XXX add posix_memalign __aligned_malloc support or
+///just wait for aligned_alloc from C++17
+struct MallocAllocator {
+    static void* Allocate(size_t n) { return malloc(n); }
+    static void Deallocate(void* p, size_t n) { free(p); }
 };
 
 
@@ -92,10 +88,10 @@ public:
 #ifdef ANY_CHARPTR_TO_STRING
     Any(const char* s) : Any(std::string(s)) {}
 #endif
-    using DefaultAllocator = NewDeleteAllocator;
+    using DefaultAllocator = MallocAllocator;
     /// Constructor accepting a parameter copied into internal type instance.
     template < typename ValT, typename AllocatorT = DefaultAllocator >
-    Any(const ValT& v, AllocatorT a = AllocatorT()) : pval_(nullptr) {
+    Any(const ValT& v, AllocatorT&& a = AllocatorT()) : pval_(nullptr) {
         using V = ValHandler< ValT,
                               AllocatorT,
                               typename AnyPolicies< ValT >::Comparison,
@@ -105,11 +101,13 @@ public:
                               typename AnyPolicies< ValT >::Call,
                               typename AnyPolicies< ValT >::Bitwise,
                               typename AnyPolicies< ValT >::HashFun >;
-        pval_ = static_cast< HandlerBase* >(a.template AllocateType< V >());
+        pval_ = reinterpret_cast< HandlerBase* >(a.Allocate(sizeof(V)));
         new (pval_) V(v, a);
     }
     /// Copy constructor.
     Any(const Any& a) : pval_(a.pval_ ? a.pval_->Clone() : nullptr) {}
+    /// Move constructor
+    Any(Any&& other) : pval_(other.pval_) {other.pval_ = nullptr;}
     /// Destructor: deletes the contained data type.
     ~Any() { if(pval_) pval_->Destroy(); }
 public:
@@ -121,12 +119,12 @@ public:
         return !Empty() ? pval_->GetType() : typeid( EMPTY_ ); //
     }
     /// Swap two Any instances by swapping the internal pointers.
-    Any& Swap( Any& a ) { std::swap( pval_, a.pval_ ); return *this; }
+    Any& Swap(Any& a) { std::swap( pval_, a.pval_ ); return *this; }
     /// Assignment
-    Any& operator=(const Any& a) { Any( a ).Swap(*this); return *this; }
+    Any& operator=(const Any& a) { Any(a).Swap(*this); return *this; }
     /// Assignment from non - @c Any value.
     template < class ValT >
-    Any& operator=( const ValT& v ) { Any( v ).Swap(*this); return *this; }
+    Any& operator=(const ValT& v) { Any( v ).Swap(*this); return *this; }
 #ifdef ANY_CHARPTR_TO_STRING
     bool operator==(const char* other) const {
       return operator==(std::string(other));
@@ -224,7 +222,7 @@ private:
     template < typename T >
     using AP = AnyPolicies< T >;
     template < typename T,
-               typename AllocatorT = NewDeleteAllocator,
+               typename AllocatorT = DefaultAllocator,
                typename ComparisonOperators = typename AP< T >::Comparison,
                typename Serializer = typename AP< T >::Serializer,
                typename ArithmeticOperators = typename AP< T >::Arithmetic,
@@ -243,10 +241,10 @@ private:
       HashFun {
         typedef T Type;
         T val_;
-        ValHandler( const T& v, AllocatorT a) : val_( v ), AllocatorT(a) {}
+        ValHandler(const T& v, AllocatorT a) : val_( v ), AllocatorT(a) {}
         const std::type_info& GetType() const { return typeid( T ); }
         ValHandler* Clone() const {
-            ValHandler* p = AllocatorT::template AllocateType< ValHandler >();
+            ValHandler* p = reinterpret_cast<ValHandler*>(AllocatorT::Allocate(sizeof(ValHandler)));
             new (p) ValHandler(val_, static_cast< const AllocatorT& >(*this));
             return p;
         }
@@ -284,7 +282,7 @@ private:
         }
         void Destroy() {
             val_.~T();
-            AllocatorT::DeAllocate(this); //DeAllocate will also clear any state in base allocator
+            AllocatorT::Deallocate(this, sizeof(*this)); //DeAllocate will also clear any state in base allocator
         }
     };
 

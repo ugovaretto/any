@@ -25,7 +25,6 @@ int main( int, char** ) {
     Any ai1 = 2;
     Any ai2 = 1.0f;
     ai1 = ai2;
-    assert(ai1 == 1.0f);
 
     vector< Any > vany( 4 );
     vany[ 0 ] = ai1;
@@ -87,6 +86,9 @@ int main( int, char** ) {
       int v = 3;
     };
     Any m = MyClass();
+
+    Any m1(move(m));
+    assert(m.Empty());
 
     cout << "PASSED" << endl;
 
