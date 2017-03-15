@@ -19,7 +19,6 @@ using namespace std;
 
 int main( int, char** ) {
 
-    cout << ANY_HAS(float, Sum) << endl;
     Any ai1 = 2;
     Any ai2 = 1.0f;
     ai1 = ai2;

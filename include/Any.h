@@ -207,7 +207,7 @@ private:
       HashFun {
         typedef T Type;
         T val_;
-        ValHandler(const T& v, AllocatorT a) : val_( v ), AllocatorT(a) {}
+        ValHandler(const T& v, const AllocatorT& a) : val_( v ), AllocatorT(a) {}
         const std::type_info& GetType() const { return typeid( T ); }
         ValHandler* Clone() const {
             ValHandler* p = reinterpret_cast<ValHandler*>(AllocatorT::Allocate(sizeof(ValHandler)));
