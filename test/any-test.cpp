@@ -54,8 +54,13 @@ int main( int, char** ) {
     i1 = i2;
     assert(i1 == i2);
 
-    struct Base {};
-    struct Derived : Base {};
+    struct Base {
+        virtual ~Base() {}
+    };
+    struct Derived : Base {
+
+        ~Derived() {}
+    };
     Base* pbase;
     Derived  derived;
     pbase = &derived;

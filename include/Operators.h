@@ -168,19 +168,23 @@ struct DefaultComparisonOperators {
     using ComparisonOperators = std::true_type;
 
     static bool Less(const T& v1, const T& v2) {
-        return v1 < v2;
+        if(ANY_HAS(T, LT)) return v1 < v2;
+        return NoComparisonOperators< T >::Less(v1, v2);
     }
 
     static bool Equal(const T& v1, const T& v2) {
-        return v1 == v2;
+        if(ANY_HAS(T, EQ)) return v1 == v2;
+        return NoComparisonOperators< T >::Equal(v1, v2);
     }
 
     static bool NotEqual(const T& v1, const T& v2) {
-        return v1 != v2;
+        if(ANY_HAS(T, NEQ)) return v1 != v2;
+        return NoComparisonOperators< T >::NotEqual(v1, v2);
     }
 
     static bool Greater(const T& v1, const T& v2) {
-        return v1 > v2;
+        if(ANY_HAS(T, GT)) return v1 > v2;
+        return NoComparisonOperators< T >::Greater(v1, v2);
     }
 };
 
@@ -205,25 +209,28 @@ struct DefaultArithmeticOperators {
     using ArithmeticOperators = std::true_type;
 
     static T Plus(const T& v1, const T& v2) {
-        return v1 + v2;
+        if(ANY_HAS(T, Sum)) return v1 + v2;
+        return NoArithmeticOperators< T >::Plus(v1, v2);
     }
 
     static T Minus(const T& v1, const T& v2) {
-        return v1 - v2;
+        if(ANY_HAS(T, Sum)) return v1 - v2;
+        return NoArithmeticOperators< T >::Minus(v1, v2);
     }
 
     static T Times(const T& v1, const T& v2) {
-        return v1 * v2;
+        if(ANY_HAS(T, Sum)) return v1 * v2;
+        return NoArithmeticOperators< T >::Times(v1, v2);
     }
 
     static T Div(const T& v1, const T& v2) {
-        return v1 / v2;
+        if(ANY_HAS(T, Sum)) return v1 / v2;
+        return NoArithmeticOperators< T >::Div(v1, v2);
     }
 
-
     static T Modulo(const T& v1, const T& v2) {
-        if(!ANY_HAS(T, Modulo)) throw std::logic_error("'%' not implemented");
-        return v1 % v2;
+        if(ANY_HAS(T, Modulo)) return v1 % v2;
+        return NoArithmeticOperators< T >::Modulo(v1, v2);
     }
 };
 

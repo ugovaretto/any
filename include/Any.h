@@ -43,7 +43,6 @@
 
 #include "ValHandler.h"
 /// @brief Hold instances of any type.
-/// @ingroup utility
 class Any {
 private:
     /// @interface HandlerBase Wrapper for data storage.
@@ -52,16 +51,18 @@ private:
         virtual HandlerBase* Clone() const = 0;
         virtual ~HandlerBase() {}
         virtual void Set(const void*) = 0;
+        virtual size_t Sizeof() const = 0;
+        virtual size_t Hash() const = 0;
+        virtual void Destroy() = 0;
+        //serilization
         virtual std::ostream& Serialize(std::ostream& os) const = 0;
         virtual char* Serialize(char* begin, const char* end) const = 0;
+        //logical operators
         virtual bool LowerThan(const HandlerBase* other) const = 0;
         virtual bool EqualTo(const HandlerBase* other) const = 0;
         //virtual bool EqualTo(const void* other) const = 0;
         virtual bool NotEqualTo(const HandlerBase* other) const = 0;
         virtual bool GreaterThan(const HandlerBase* other) const = 0;
-        virtual size_t Sizeof() const = 0;
-        virtual size_t Hash() const = 0;
-        virtual void Destroy() = 0;
     };
 public:
     /// Type used by Any::Type() method to signal an empty @c Any instance.
@@ -117,6 +118,14 @@ public:
         }
         return *this;
     }
+    /// Size
+    size_t Size() const {
+        return pval_->Sizeof();
+    }
+    /// Hash
+    size_t Hash() const {
+        return pval_->Hash();
+    }
 #ifdef ANY_CHARPTR_TO_STRING
     bool operator==(const char* other) const {
       return operator==(std::string(other));
@@ -128,6 +137,25 @@ public:
     bool operator==(const ValT& v) const {
         return (typeid(v) == Type()) && static_cast< ValStorage< ValT >* >( pval_ )->val_ == v;
     }
+    // Data access
+public:
+    ///Check, cast and return const reference.
+    template < typename T > const T& Get() const {
+        CheckAndThrow< T >();
+        return static_cast< ValStorage< T >* >( pval_ )->val_;
+    }
+    ///Convert to const reference.
+    template < class ValT > operator const ValT&() const {
+        CheckAndThrow< ValT >();
+        return (static_cast< ValStorage< ValT >* >( pval_ )->val_ );
+    }
+    ///Convert to reference.
+    template < class ValT > operator ValT&() const {
+        CheckAndThrow< ValT >();
+        return ( static_cast< ValStorage< ValT >* >( pval_ )->val_ );
+    }
+    // Logical operators
+public:
     /// Lower than
     bool operator <(const Any& other) const {
       CheckAndThrow(other);
@@ -147,30 +175,7 @@ public:
       CheckAndThrow(other);
       return pval_->GreaterThan(other.pval_);
     }
-    /// Size
-    size_t Size() const {
-      return pval_->Sizeof();
-    }
-    /// Hash
-    size_t Hash() const {
-      return pval_->Hash();
-    }
-public:
-    ///Check, cast and return const reference.
-    template < typename T > const T& Get() const {
-        CheckAndThrow< T >();
-        return static_cast< ValStorage< T >* >( pval_ )->val_;
-    }
-    ///Convert to const reference.
-    template < class ValT > operator const ValT&() const {
-        CheckAndThrow< ValT >();
-        return (static_cast< ValStorage< ValT >* >( pval_ )->val_ );
-    }
-    ///Convert to reference.
-    template < class ValT > operator ValT&() const {
-        CheckAndThrow< ValT >();
-        return ( static_cast< ValStorage< ValT >* >( pval_ )->val_ );
-    }
+
 private:
     /// Check if contained data is convertible to specific type.
     template < class ValT > void CheckAndThrow() const {
