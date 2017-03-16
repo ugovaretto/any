@@ -41,10 +41,27 @@
 #include <string>
 #endif
 
-
+#include "ValHandler.h"
 /// @brief Hold instances of any type.
 /// @ingroup utility
 class Any {
+private:
+    /// @interface HandlerBase Wrapper for data storage.
+    struct HandlerBase {// hint: use small object allocator {
+        virtual const std::type_info& GetType() const = 0;
+        virtual HandlerBase* Clone() const = 0;
+        virtual ~HandlerBase() {}
+        virtual std::ostream& Serialize(std::ostream& os) const = 0;
+        virtual char* Serialize(char* begin, const char* end) const = 0;
+        virtual bool LowerThan(const HandlerBase* other) const = 0;
+        virtual bool EqualTo(const HandlerBase* other) const = 0;
+        //virtual bool EqualTo(const void* other) const = 0;
+        virtual bool NotEqualTo(const HandlerBase* other) const = 0;
+        virtual bool GreaterThan(const HandlerBase* other) const = 0;
+        virtual size_t Sizeof() const = 0;
+        virtual size_t Hash() const = 0;
+        virtual void Destroy() = 0;
+    };
 public:
     /// Type used by Any::Type() method to signal an empty @c Any instance.
     struct EMPTY_ {};
@@ -54,20 +71,22 @@ public:
     Any(const char* s) : Any(std::string(s)) {}
 #endif
     using DefaultAllocator = MallocAllocator;
+    template < typename ValT >
+    using ValStorage = ValHandler< ValT,
+            HandlerBase,
+            DefaultAllocator,
+            typename AnyPolicies< ValT >::Comparison,
+            typename AnyPolicies< ValT >::Serializer,
+            typename AnyPolicies< ValT >::Arithmetic,
+            typename AnyPolicies< ValT >::Logical,
+            typename AnyPolicies< ValT >::Call,
+            typename AnyPolicies< ValT >::Bitwise,
+            typename AnyPolicies< ValT >::HashFun >;
     /// Constructor accepting a parameter copied into internal type instance.
     template < typename ValT, typename AllocatorT = DefaultAllocator >
     Any(const ValT& v, AllocatorT&& a = AllocatorT()) : pval_(nullptr) {
-        using V = ValHandler< ValT,
-                              AllocatorT,
-                              typename AnyPolicies< ValT >::Comparison,
-                              typename AnyPolicies< ValT >::Serializer,
-                              typename AnyPolicies< ValT >::Arithmetic,
-                              typename AnyPolicies< ValT >::Logical,
-                              typename AnyPolicies< ValT >::Call,
-                              typename AnyPolicies< ValT >::Bitwise,
-                              typename AnyPolicies< ValT >::HashFun >;
-        pval_ = reinterpret_cast< HandlerBase* >(a.Allocate(sizeof(V)));
-        new (pval_) V(v, a);
+        pval_ = reinterpret_cast< HandlerBase* >(a.Allocate(sizeof(ValStorage< ValT >(v, a))));
+        new (pval_) ValStorage< ValT >(v, a);
     }
     /// Copy constructor.
     Any(const Any& a) : pval_(a.pval_ ? a.pval_->Clone() : nullptr) {}
@@ -99,7 +118,7 @@ public:
     /// invoking equality operator on converted type.
     template < class ValT >
     bool operator==(const ValT& v) const {
-        return (typeid(v) == Type()) && static_cast< ValHandler<ValT>* >( pval_ )->val_ == v;
+        return (typeid(v) == Type()) && static_cast< ValStorage< ValT >* >( pval_ )->val_ == v;
     }
     /// Lower than
     bool operator <(const Any& other) const {
@@ -132,17 +151,17 @@ public:
     ///Check, cast and return const reference.
     template < typename T > const T& Get() const {
         CheckAndThrow< T >();
-        return static_cast< ValHandler< T >* >( pval_ )->val_;
+        return static_cast< ValStorage< T >* >( pval_ )->val_;
     }
     ///Convert to const reference.
     template < class ValT > operator const ValT&() const {
         CheckAndThrow< ValT >();
-        return (static_cast< ValHandler<ValT>* >( pval_ )->val_ );
+        return (static_cast< ValStorage< ValT >* >( pval_ )->val_ );
     }
     ///Convert to reference.
     template < class ValT > operator ValT&() const {
         CheckAndThrow< ValT >();
-        return ( static_cast< ValHandler<ValT>* >( pval_ )->val_ );
+        return ( static_cast< ValStorage< ValT >* >( pval_ )->val_ );
     }
 private:
     /// Check if contained data is convertible to specific type.
@@ -166,91 +185,6 @@ private:
                           + other.Type().name()).c_str());
       #endif
     }
-    /// @interface HandlerBase Wrapper for data storage.
-    struct HandlerBase {// hint: use small object allocator {
-        virtual const std::type_info& GetType() const = 0;
-        virtual HandlerBase* Clone() const = 0;
-        virtual ~HandlerBase() {}
-        virtual std::ostream& Serialize(std::ostream& os) const = 0;
-        virtual char* Serialize(char* begin, const char* end) const = 0;
-        virtual bool LowerThan(const HandlerBase* other) const = 0;
-        virtual bool EqualTo(const HandlerBase* other) const = 0;
-        //virtual bool EqualTo(const void* other) const = 0;
-        virtual bool NotEqualTo(const HandlerBase* other) const = 0;
-        virtual bool GreaterThan(const HandlerBase* other) const = 0;
-        virtual size_t Sizeof() const = 0;
-        virtual size_t Hash() const = 0;
-        virtual void Destroy() = 0;
-    };
-
-    /// HandlerBase implementation - actual data container class.
-    template < typename T >
-    using AP = AnyPolicies< T >;
-    template < typename T,
-               typename AllocatorT = DefaultAllocator,
-               typename ComparisonOperators = typename AP< T >::Comparison,
-               typename Serializer = typename AP< T >::Serializer,
-               typename ArithmeticOperators = typename AP< T >::Arithmetic,
-               typename LogicalOperators = typename AP< T >::Logical,
-               typename CallOperator = typename AP< T >::Call,
-               typename BitWiseOperators = typename AP< T >::Bitwise,
-               typename HashFun = typename AP< T >::HashFun >
-    struct ValHandler :
-      HandlerBase,
-      AllocatorT,
-      ComparisonOperators,
-      ArithmeticOperators,
-      LogicalOperators,
-      Serializer,
-      CallOperator,
-      BitWiseOperators,
-      HashFun {
-        typedef T Type;
-        T val_;
-        ValHandler(const T& v, const AllocatorT& a) : val_( v ), AllocatorT(a) {}
-        const std::type_info& GetType() const { return typeid( T ); }
-        ValHandler* Clone() const {
-            ValHandler* p = reinterpret_cast<ValHandler*>(AllocatorT::Allocate(sizeof(ValHandler)));
-            new (p) ValHandler(val_, static_cast< const AllocatorT& >(*this));
-            return p;
-        }
-        std::ostream& Serialize( std::ostream& os ) const {
-            return Serializer::Serialize(os, val_);
-        }
-        bool LowerThan(const HandlerBase* other) const {
-          const ValHandler< Type >* v
-            = static_cast< const ValHandler< Type >* >(other);
-          return ComparisonOperators::Less(val_, v->val_);
-        }
-        bool EqualTo(const HandlerBase* other) const {
-          const ValHandler< Type >*v
-            = static_cast< const ValHandler< Type >* >(other);
-          return ComparisonOperators::Equal(val_, v->val_);
-        }
-        bool NotEqualTo(const HandlerBase* other) const {
-          const ValHandler< Type >*v
-            = static_cast< const ValHandler< Type >* >(other);
-          return ComparisonOperators::NotEqual(val_, v->val_);
-        }
-        bool GreaterThan(const HandlerBase* other) const {
-          const ValHandler< Type >*v
-            = static_cast< const ValHandler< Type >* >(other);
-          return ComparisonOperators::Greater(val_, v->val_);
-        }
-        char* Serialize(char* begin, const char* end) const {
-          return Serializer::Serialize(val_, begin, end);
-        }
-        size_t Sizeof() const {
-          return sizeof(val_);
-        }
-        size_t Hash() const {
-          return HashFun::Hash(val_);
-        }
-        void Destroy() {
-            val_.~T();
-            AllocatorT::Deallocate(this, sizeof(*this)); //DeAllocate will also clear any state in base allocator
-        }
-    };
 
     ///Pointer to contained data: deleted when Any instance deleted.
     HandlerBase* pval_;
