@@ -63,6 +63,9 @@ struct ValHandler :
         new (p) ValHandler(val_, static_cast< const AllocatorT& >(*this));
         return p;
     }
+    void Set(const void* p) {
+        val_ = *reinterpret_cast< const T* >(p);
+    }
     std::ostream& Serialize( std::ostream& os ) const {
         return Serializer::Serialize(os, val_);
     }

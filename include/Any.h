@@ -51,6 +51,7 @@ private:
         virtual const std::type_info& GetType() const = 0;
         virtual HandlerBase* Clone() const = 0;
         virtual ~HandlerBase() {}
+        virtual void Set(const void*) = 0;
         virtual std::ostream& Serialize(std::ostream& os) const = 0;
         virtual char* Serialize(char* begin, const char* end) const = 0;
         virtual bool LowerThan(const HandlerBase* other) const = 0;
@@ -108,7 +109,14 @@ public:
     Any& operator=(const Any& a) { Any(a).Swap(*this); return *this; }
     /// Assignment from non - @c Any value.
     template < class ValT >
-    Any& operator=(const ValT& v) { Any( v ).Swap(*this); return *this; }
+    Any& operator=(const ValT& v) {
+        if(Type() == typeid(v)) {
+            pval_->Set(&v);
+        } else {
+            Any(v).Swap(*this);
+        }
+        return *this;
+    }
 #ifdef ANY_CHARPTR_TO_STRING
     bool operator==(const char* other) const {
       return operator==(std::string(other));

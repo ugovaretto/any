@@ -69,10 +69,9 @@ int main( int, char** ) {
     //with ordered map the assigned keys must always be of the same type after declaration,
     //if not an exception is thrown when ANY_CHECK_TYPE is #defined
     map< Any, Any > si2 = map< Any, Any >{{"one", 1},
-                                         {"two", 2}};
+                                          {"two", 2}};
     assert(si2[string("one")] == 1);
     assert(si2["one"] == 1);
-
 
     //with unordered maps the maps can hold any type of key at any given point in time as long as a valid
     //std::hash function is available
