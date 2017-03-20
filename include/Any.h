@@ -76,7 +76,7 @@ public:
     template < typename ValT >
     using ValStorage = ValHandler< ValT,
             HandlerBase,
-            DefaultAllocator,
+            EmptyAllocator,
             typename AnyPolicies< ValT >::Comparison,
             typename AnyPolicies< ValT >::Serializer,
             typename AnyPolicies< ValT >::Arithmetic,
@@ -87,8 +87,18 @@ public:
     /// Constructor accepting a parameter copied into internal type instance.
     template < typename ValT, typename AllocatorT = DefaultAllocator >
     Any(const ValT& v, AllocatorT&& a = AllocatorT()) : pval_(nullptr) {
-        pval_ = reinterpret_cast< HandlerBase* >(a.Allocate(sizeof(ValStorage< ValT >(v, a))));
-        new (pval_) ValStorage< ValT >(v, a);
+        using V = ValHandler< ValT,
+                HandlerBase,
+                AllocatorT,
+                typename AnyPolicies< ValT >::Comparison,
+                typename AnyPolicies< ValT >::Serializer,
+                typename AnyPolicies< ValT >::Arithmetic,
+                typename AnyPolicies< ValT >::Logical,
+                typename AnyPolicies< ValT >::Call,
+                typename AnyPolicies< ValT >::Bitwise,
+                typename AnyPolicies< ValT >::HashFun >;
+        pval_ = reinterpret_cast< HandlerBase* >(a.Allocate(sizeof(V(v, a))));
+        new (pval_) V(v, a);
     }
     /// Copy constructor.
     Any(const Any& a) : pval_(a.pval_ ? a.pval_->Clone() : nullptr) {}

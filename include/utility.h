@@ -54,12 +54,19 @@ std::ostream& operator<<(std::ostream& os, const std::tuple< ArgsT... >& t) {
     return PrintTuple< size_t(0), sizeof...(ArgsT) >::Do(os, t);
 }
 
+struct EmptyAllocator {
+    static void* Allocate(size_t n) { return nullptr; }
+    static void Deallocate(void* p, size_t n) {}
+};
+
 ///XXX add posix_memalign __aligned_malloc support or
 ///just wait for aligned_alloc from C++17
-struct MallocAllocator {
+///Derived from EmptyAllocator to make conversion to ValHandler<T, EmptyAllocator> correct
+struct MallocAllocator : EmptyAllocator {
     static void* Allocate(size_t n) { return malloc(n); }
     static void Deallocate(void* p, size_t n) { free(p); }
 };
+
 //------------------------------------------------------------------------------
 namespace {
 #ifdef ANY_HASOP2
