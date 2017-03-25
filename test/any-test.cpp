@@ -40,7 +40,9 @@ struct Val : Handler {
     }
 };
 
-
+//in any constructor: if static allocation choose allocator which never invokes delete
+//in clone function: pass reference to destination address; allocate memory first then invoke Clone(address of allocated memory)
+//use std::array
 struct Container {
     std::array< Handler*, 2 > data; //2 * sizeof(void*)
     template < typename T >
