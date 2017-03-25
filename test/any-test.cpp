@@ -14,8 +14,65 @@
 #define ANY_CHARPTR_TO_STRING
 #define ANY_CHECK_TYPE
 #include <Any.h>
+#include <array>
+#include <utility>
 
 using namespace std;
+
+struct Handler {
+    virtual void Get(char* data) const = 0;
+    virtual void Set(const char* data) = 0;
+    virtual size_t Sizeof() const = 0;
+};
+
+template < typename T >
+struct Val : Handler {
+    T data_;
+    Val(const T& v) : data_(v) {}
+    void Get(char* data) const {
+        memmove(data, &data_, sizeof(data_));
+    }
+    void Set(const char* data) {
+        memmove(&data_, data, sizeof(data_));
+    }
+    size_t Sizeof() const {
+        return sizeof(data_);
+    }
+};
+
+
+struct Container {
+    std::array< Handler*, 2 > data; //2 * sizeof(void*)
+    template < typename T >
+    Container(const T& v, bool s) {
+        if(sizeof(declval<Val<T>>()) <= sizeof(declval<std::array< Handler*, 2 >>())) {
+            cout << "Static" << endl;
+        } else {
+            cout << "Dynamic" << endl;
+        }
+        if(s) {
+            data[1] = (Handler*) 1;
+            new (&data[0]) Val<T>(v);
+            cout << "sizeof Val: " << sizeof(Val<T>(v)) << endl;
+            cout << "array size: " << sizeof(std::array< Handler*, 2 >) << endl;
+        } else {
+            data[0] = new Val<T>(v);
+            data[1] = 0;
+        }
+    }
+    Handler* Ptr() const {
+        if(data[1] == 0) {
+            return data[0];
+        }
+        return (Handler*) &data[0];
+    }
+};
+
+struct C2 {
+    void Method() { cout << "C2" << endl; }
+};
+
+
 
 int main( int, char** ) {
 
@@ -94,6 +151,18 @@ int main( int, char** ) {
     assert(m.Empty());
 
     cout << "PASSED" << endl;
+
+    Container c(10, true);
+    Container c2(100, false);
+
+    int ci1;
+    c.Ptr()->Get((char*) &ci1);
+    cout << "1: " << ci1 << endl;
+
+    int ci2;
+    c2.Ptr()->Get((char*) &ci2);
+    cout << "2: " << ci2 << endl;
+
 
     return 0;
 }

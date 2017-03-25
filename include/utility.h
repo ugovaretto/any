@@ -31,6 +31,7 @@
 #include <iostream>
 #include <tuple>
 #include <cstdlib> //malloc
+#include <mutex>
 ///Utility function to serialize the content of a tuple
 namespace { template < size_t idx, size_t size >
     struct PrintTuple {
@@ -67,6 +68,39 @@ struct MallocAllocator : EmptyAllocator {
     static void Deallocate(void* p, size_t n) { free(p); }
 };
 
+#if 0
+struct NoLockPolicy {
+    static void Acquire(std::mutex&) {}
+    static void Release(std::mutex&) {}
+};
+
+struct LockPolicy {
+    static void Acquire(std::mutex& guard) { guard.lock(); }
+    static void Release(std::mutex& guard) { guard.unlock(); }
+};
+
+template < size_t Size, int ID = 0, typename LockingPolicyT = NoLock >
+struct FixedStackAllocator : EmptyAllocator, LockingPolicyT {
+    static std::array< char, Size > buffer;
+    static size_t idx = 0;
+    static std::mutex guard;
+    static void* Allocate(size_t n) {
+        LockingPolicyTypeT::Acquire(guard);
+        if(idx + n >= buffer.size()) throw std::bad_Alloc();
+        void* ret = &buffer[idx];
+        idx += n;
+        LockingPolicyTypeT::Release(guard);
+        return ret;
+    }
+    static void DeAllocate(size_t n, void* p) {
+        LockingPolicyT::Acquire(guard);
+        if(p == &buffer[idx - n]) idx = idx - n;
+        LockingPolicyT::Release(guard);
+    }
+};
+
+
+#endif
 //------------------------------------------------------------------------------
 namespace {
 #ifdef ANY_HASOP2
