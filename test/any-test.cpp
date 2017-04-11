@@ -23,6 +23,7 @@ struct Handler {
     virtual void Get(char* data) const = 0;
     virtual void Set(const char* data) = 0;
     virtual size_t Sizeof() const = 0;
+    virtual ~Handler() {}
 };
 
 template < typename T >
@@ -53,18 +54,19 @@ struct Container {
             cout << "Dynamic" << endl;
         }
         if(s) {
-            data[1] = (Handler*) 1;
             new (&data[0]) Val<T>(v);
+            //data[0] will never be zero since Handler always includes a vtable
+            //pointer
             cout << "sizeof Val: " << sizeof(Val<T>(v)) << endl;
             cout << "array size: " << sizeof(std::array< Handler*, 2 >) << endl;
         } else {
-            data[0] = new Val<T>(v);
-            data[1] = 0;
+            data[0] = 0;
+            data[1] = new Val<T>(v);;
         }
     }
     Handler* Ptr() const {
-        if(data[1] == 0) {
-            return data[0];
+        if(data[0] == 0) {
+            return data[1];
         }
         return (Handler*) &data[0];
     }
